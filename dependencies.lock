@@ -12,3 +12,7 @@ CLANG_VERSION="24.0.0git"
 LLVM_COMMIT="f42c87ba2c70219b1f4ad1f031a5b6a1ea6603fb"
 
 DEVICE="r8q"
+
+# Validated Neutron toolchain binaries
+CLANG_SHA256="5ddad56ef3504ccc39da055c897ecbed28b5bfa548a8e6db9faf76c95f287438"
+LLD_SHA256="42ea0eca8ce4c977ad90d631a31808f16f20b3622ccc3866fe645a75680e8a62"
