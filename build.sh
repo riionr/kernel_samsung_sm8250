@@ -1,3 +1,13 @@
+#!/usr/bin/env bash
+set -e
+set -o pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+ROOT_DIR="$(pwd)"
+source dependencies.lock
+bash tools/setup-dependencies.sh
+
 SECONDS=0 # builtin bash timer
 
 GREEN='\033[0;32m'
@@ -6,15 +16,13 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-export DEVICE=r8q
+export DEVICE
 
 # ===== AnyKernel3 =====
-AK3_REPO="https://github.com/doubledashdot/AnyKernel3"
-AK3_BRANCH="$DEVICE-ksu"
 
 ZIPNAME="aospksu-$(date '+%Y%m%d').zip"
 TC_DIR="$(pwd)/tc/clang"
-DEFCONFIG="vendor/kona-perf_defconfig vendor/samsung/kona-sec-common.config vendor/samsung/$DEVICE.config vendor/extra/ksu.config"
+DEFCONFIG="vendor/kona-perf_defconfig vendor/samsung/kona-sec-common.config vendor/samsung/$DEVICE.config vendor/extra/ksu.config vendor/extra/droidspaces.config"
 
 OUT_DIR="$(pwd)/out"
 BOOT_DIR="$OUT_DIR/arch/arm64/boot"
@@ -25,36 +33,9 @@ if test -z "$(git rev-parse --show-cdup 2>/dev/null)" &&
     ZIPNAME="${ZIPNAME::-4}-$(echo $head | cut -c1-8)-$DEVICE.zip"
 fi
 
-rm -rf KernelSU
 
-curl -LSs "https://raw.githubusercontent.com/doubledashdot/sKernelSU/master/kernel/setup.sh" | bash -s master
 
 export PATH="$TC_DIR/bin:$PATH"
-
-if ! [ -d "$TC_DIR" ]; then
-    echo -e "${YELLOW}Clang not found! Downloading...${NC}"
-    mkdir -p "$TC_DIR"
-
-    ASSET_URL=$(
-        curl -fsSL https://api.github.com/repos/Neutron-Toolchains/clang-build-catalogue/releases/latest |
-        jq -r '.assets[]
-            | select(.name | endswith(".tar.zst"))
-            | .browser_download_url' |
-        head -n1
-    )
-
-    if [ -z "$ASSET_URL" ]; then
-        echo -e "${RED}Failed to find latest release!${NC}"
-        exit 1
-    fi
-
-    if ! curl -L "$ASSET_URL" | tar --zstd -x -C "$TC_DIR" --strip-components=1; then
-        echo -e "${RED}Download failed!${NC}"
-        exit 1
-    fi
-
-    echo -e "${GREEN}Clang ready!${NC}"
-fi
 
 mkdir -p out
 echo -e "${YELLOW}building with: $DEFCONFIG${NC}"
@@ -76,14 +57,16 @@ make -j$(nproc --all) O=out ARCH=arm64 \
     CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
     LLVM=1 LLVM_IAS=1 Image
     
-if [ -f "$BOOT_DIR/Image" ]; then
+if [ -s "$BOOT_DIR/Image" ] && [ -s "$BOOT_DIR/dtbo.img" ]; then
     echo -e "${GREEN}Kernel Image found!${NC}"
     
     if [ -d "$DTS_DIR" ]; then
         echo -e "${BLUE}Generating dtb from $DTS_DIR...${NC}"
-        cat $(find "$DTS_DIR" -type f -name "*.dtb" | sort) > "$BOOT_DIR/dtb"
+        mapfile -d '' -t DTB_FILES < <(find "$DTS_DIR" -type f -name "*.dtb" -print0 | sort -z)
+        test "${#DTB_FILES[@]}" -gt 0
+        cat "${DTB_FILES[@]}" > "$BOOT_DIR/dtb"
         
-        if [ -f "$BOOT_DIR/dtb" ]; then
+        if [ -s "$BOOT_DIR/dtb" ]; then
             echo -e "${GREEN}dtb generated successfully!${NC}"
         else
             echo -e "${RED}Failed to generate dtb! Check if dtbs were compiled.${NC}"
@@ -98,20 +81,29 @@ else
     exit 1
 fi
 
-rm -rf AnyKernel3
-echo "[*] Cloning AnyKernel3 for $DEVICE"
-git clone -q -b "$AK3_BRANCH" "$AK3_REPO" AnyKernel3 || exit 1
+echo "Preparing clean AnyKernel3 package..."
 
-echo -e "Preparing zip...\n"
+PACKAGE_DIR="$(mktemp -d)"
+trap 'rm -rf -- "$PACKAGE_DIR"' EXIT
 
-cp "$BOOT_DIR/dtbo.img" AnyKernel3/dtbo.img
-cp "$BOOT_DIR/Image" AnyKernel3/Image
-cp "$BOOT_DIR/dtb" AnyKernel3/dtb
+git -C AnyKernel3 archive "$AK3_COMMIT" | tar -xf - -C "$PACKAGE_DIR"
 
-cd AnyKernel3
+cp "$BOOT_DIR/Image" "$PACKAGE_DIR/Image"
+cp "$BOOT_DIR/dtb" "$PACKAGE_DIR/dtb"
+cp "$BOOT_DIR/dtbo.img" "$PACKAGE_DIR/dtbo.img"
 
-zip -r9 "../$ZIPNAME" * -x .git README.md *placeholder
-cd ..
+test -s "$PACKAGE_DIR/Image"
+test -s "$PACKAGE_DIR/dtb"
+test -s "$PACKAGE_DIR/dtbo.img"
+
+(
+    cd "$PACKAGE_DIR"
+    zip -r9 "$PACKAGE_DIR/$ZIPNAME" * \
+        -x README.md '*placeholder'
+)
+
+unzip -tq "$PACKAGE_DIR/$ZIPNAME"
+mv "$PACKAGE_DIR/$ZIPNAME" "$ROOT_DIR/$ZIPNAME"
 
 echo -e "\n${GREEN}Completed in $((SECONDS / 60)) minute(s) and $((SECONDS % 60)) second(s)!${NC}"
 echo -e "${GREEN}Zip: $ZIPNAME${NC}"
