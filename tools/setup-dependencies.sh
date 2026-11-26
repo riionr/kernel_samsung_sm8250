@@ -63,17 +63,32 @@ echo "=== Preparing Neutron Clang ==="
 if [ ! -d tc/clang ]; then
     ARCHIVE="${TOOLCHAIN_PATH:-$ROOT/../backups/$TOOLCHAIN_ARCHIVE}"
 
-    if [ ! -f "$ARCHIVE" ]; then
-        echo "ERROR: Toolchain archive not found: $ARCHIVE"
-        exit 1
-    fi
-
-    printf '%s  %s\n' "$TOOLCHAIN_SHA256" "$ARCHIVE" | sha256sum -c -
-
     mkdir -p tc
-    tar --zstd -xf "$ARCHIVE" -C tc
-fi
 
+    if [ -f "$ARCHIVE" ]; then
+        echo "Using preserved toolchain archive"
+        printf '%s  %s\n' "$TOOLCHAIN_SHA256" "$ARCHIVE" | sha256sum -c -
+        tar --zstd -xf "$ARCHIVE" -C tc
+    elif [ -n "${TOOLCHAIN_PATH:-}" ]; then
+        echo "ERROR: Specified toolchain archive not found"
+        exit 1
+    else
+        echo "Downloading pinned Neutron Clang release"
+        TMP_DIR="$(mktemp -d)"
+        trap 'rm -rf -- "$TMP_DIR"' EXIT
+
+        curl -fL --retry 3 "$TOOLCHAIN_URL" -o "$TMP_DIR/toolchain.tar.zst"
+
+        printf '%s  %s\n' "$TOOLCHAIN_DOWNLOAD_SHA256" "$TMP_DIR/toolchain.tar.zst" | sha256sum -c -
+
+        mkdir -p "$TMP_DIR/clang"
+        tar --zstd -xf "$TMP_DIR/toolchain.tar.zst" -C "$TMP_DIR/clang"
+
+        mv "$TMP_DIR/clang" tc/clang
+        rm -rf -- "$TMP_DIR"
+        trap - EXIT
+    fi
+fi
 printf '%s  %s\n' "$CLANG_SHA256" "tc/clang/bin/clang" | sha256sum -c -
 printf '%s  %s\n' "$LLD_SHA256" "tc/clang/bin/ld.lld" | sha256sum -c -
 

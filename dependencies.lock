@@ -20,3 +20,7 @@ LLD_SHA256="42ea0eca8ce4c977ad90d631a31808f16f20b3622ccc3866fe645a75680e8a62"
 # Preserved Neutron toolchain archive
 TOOLCHAIN_ARCHIVE="neutron-clang-24-f42c87ba.tar.zst"
 TOOLCHAIN_SHA256="70f3610af4febb523e8b72227b4888e579012b166ebe344bdcb45e0eb8cb0ddc"
+
+# Validated upstream toolchain release
+TOOLCHAIN_URL="https://github.com/Neutron-Toolchains/clang-build-catalogue/releases/download/06092026/neutron-clang-06092026.tar.zst"
+TOOLCHAIN_DOWNLOAD_SHA256="531083928c8e37f6b31e324dbfd0b5a8323f989b1c57ff2c1368b889b5b1bd30"
