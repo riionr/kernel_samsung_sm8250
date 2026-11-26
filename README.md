@@ -88,12 +88,6 @@ git clone -b droidspaces-integration \
 cd kernel_samsung_sm8250
 ```
 
-Provide the validated Neutron Clang archive:
-
-```sh
-export TOOLCHAIN_PATH=/path/to/neutron-clang-24-f42c87ba.tar.zst
-```
-
 Start the build:
 
 ```sh
@@ -111,8 +105,13 @@ checksums are recorded in dependencies.lock.
 The tools/setup-dependencies.sh script prepares
 and verifies the required dependencies.
 
-The validated toolchain archive is not yet
-publicly distributed by this fork.
+The validated Neutron Clang release is downloaded
+automatically from the original upstream repository.
+The archive and compiler checksums are verified
+before compilation.
+
+An optional preserved toolchain archive can be supplied
+using the TOOLCHAIN_PATH environment variable.
 
 ## Validation Status
 
