@@ -1,0 +1,14 @@
+# Kernel r8q - validated dependencies
+
+KSU_REPO="https://github.com/doubledashdot/KernelSU"
+KSU_COMMIT="23f06f575540370036f6a5bc1afe19d4b1e1ebc6"
+KSU_TAG="v3.3.1-38"
+
+AK3_REPO="https://github.com/doubledashdot/AnyKernel3"
+AK3_COMMIT="b74233e0b0416c4c010e8900f4ba76dd64534480"
+AK3_BRANCH="r8q-ksu"
+
+CLANG_VERSION="24.0.0git"
+LLVM_COMMIT="f42c87ba2c70219b1f4ad1f031a5b6a1ea6603fb"
+
+DEVICE="r8q"
