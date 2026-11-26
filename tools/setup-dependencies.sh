@@ -12,7 +12,7 @@ prepare_repo() {
     local commit="$3"
 
     if [ ! -e "$dir" ]; then
-        git clone --no-checkout "$repo" "$dir"
+        git clone "$repo" "$dir"
     fi
 
     if [ "$(git -C "$dir" remote get-url origin)" != "$repo" ]; then
